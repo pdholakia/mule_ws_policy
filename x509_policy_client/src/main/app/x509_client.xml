@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:ws="http://www.mulesoft.org/schema/mule/ws" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://cxf.apache.org/policy"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/current/mule-cxf.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ws http://www.mulesoft.org/schema/mule/ws/current/mule-ws.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="1414" doc:name="HTTP Listener Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration" host="localhost" port="8080" basePath="doubleit" doc:name="HTTP Request Configuration"/>
+    <!-- cxf:configuration configurationLocation="cxf-add.xml"/-->
+    <cxf:configuration name="clientConfig" configurationLocation="src/main/resources/cxf-client.xml" enableMuleSoapHeaders="false" initializeStaticBusInstance="true" doc:name="CXF Configuration"/>
+    <flow name="x509_clientFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/" doc:name="HTTP"/>
+        <set-payload value="#[10]" doc:name="Set Payload"/>
+        <flow-ref name="x509_clientSub_Flow" doc:name="x509_clientSub_Flow"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output text/xml
+---
+ output: {
+ 	doubleValue: payload
+ }]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <sub-flow name="x509_clientSub_Flow">
+        <cxf:jaxws-client operation="DoubleIt" 
+        				  configuration-ref="clientConfig"
+        				  serviceClass="com.pd.DoubleItPortType" 
+        				  wsdlLocation="http://localhost:8080/doubleit/services/doubleit?wsdl" 
+        				  enableMuleSoapHeaders="false" 
+        				  doc:name="CXF">	
+        </cxf:jaxws-client>
+        <http:request config-ref="HTTP_Request_Configuration" path="/services/doubleit" method="POST" doc:name="HTTP"/>
+    </sub-flow>
+</mule>
